@@ -2,17 +2,22 @@
 pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract WhitelistContract is ERC721URIStorageUpgradeable {
+contract WhitelistContract is ERC721URIStorage {
+    using Counters for Counters.Counter;
+
     address public owner;
+    address public contractAddress;
+    Counters.Counter private _tokenIds;
+
     mapping(address => bool) private isOwner;
     mapping(address => bool) private whitelistAddrs;
-    mapping(address => uint256) public owned;
 
-    constructor() {
-        owner = msg.sender;
+    constructor(address marketplaceAddr) ERC721("Midnight Token", "MNT") {
+        owner = marketplaceAddr;
     }
 
     // modifier allows ups to restrict ONLY to the creator.
@@ -30,20 +35,34 @@ contract WhitelistContract is ERC721URIStorageUpgradeable {
         whitelistAddrs[_whitelistAddr] = true;
     }
 
+    // modifier whitelisted - checks to see if the msg.sender is whitelisted to interact with the contract.
     modifier whitelisted(address _addr) {
         require(whitelistAddrs[_addr], "you need to be whitelisted");
         _;
     }
 
     // NFT Functions
-    /// @notice Explain to an end user what this does
-    /// @dev Explain to a developer any extra details
+    /// @dev   - list of contract functions avaibale.
     /// @return Documents the return variables of a contract’s function state variable
-    function mintNFT() public view whitelisted(msg.sender) returns (bool) {
+    function createNewNFT() public view whitelisted(msg.sender) returns (bool) {
         return (true);
     }
 
-    function checkNFTs(address _addr) public view returns (uint256) {
-        return 0;
+    // createToken - creates a token on the marketplace if the address is whitelisted.
+    function createToken(string memory _tokenURI)
+        public
+        whitelisted(msg.sender)
+        returns (uint256)
+    {
+        // require the msg.sender to be whilelisted, just in case.
+        require(whitelistAddrs[msg.sender] == true, "need to be whitelisted");
+
+        _tokenIds.increment();
+        uint256 newItemId = _tokenIds.current();
+
+        _mint(msg.sender, newItemId);
+        _setTokenURI(newItemId, _tokenURI);
+        setApprovalForAll(contractAddress, true);
+        return newItemId;
     }
 }
